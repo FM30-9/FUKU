@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>気温別・服装メモ帳</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Noto Sans JP Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        * {
+            transition: none !important;
+            animation: none !important;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-shirt"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-800 leading-tight">気温別・服装メモ帳</h1>
+                    <p class="text-[11px] text-slate-500">日付・気温と服装をシンプルに記録・確認</p>
+                </div>
+            </div>
+
+            <button onclick="openFormModal()"
+                class="bg-indigo-600 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center space-x-1.5">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>メモを追加</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-5 space-y-4">
+
+        <!-- Control Bar -->
+        <div
+            class="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold text-slate-500">並び順:</span>
+                <button id="sort-toggle-btn" onclick="toggleSortOrder()"
+                    class="bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs border border-slate-200 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-arrow-down-short-wide text-indigo-600" id="sort-icon"></i>
+                    <span id="sort-label">気温が低い順</span>
+                </button>
+            </div>
+
+            <div class="relative flex-1 max-w-xs min-w-[200px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                <input type="text" id="search-input" oninput="renderTable()" placeholder="日付、服、体感、メモで検索..."
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800">
+            </div>
+
+            <div class="text-xs font-bold text-slate-500" id="record-count">
+                全 0 件
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 text-xs font-bold border-b border-slate-200">
+                            <th class="py-2 px-3 w-32 text-center border-r border-slate-200">日付 / 気温 / 体感</th>
+                            <th class="py-2 px-3 w-1/2 border-r border-slate-200 text-slate-700 bg-slate-50/50">
+                                【上】トップス・上着</th>
+                            <th class="py-2 px-3 w-1/2 border-r border-slate-200 text-slate-700 bg-slate-50/50">【下】ボトムス
+                            </th>
+                            <th class="py-2 px-3 w-16 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="text-xs">
+                        <!-- Table Content Generated via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Input Form Modal -->
+    <div id="modal-form" onclick="handleModalBackdropClick(event, 'modal-form', closeFormModal)"
+        class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-3 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 shadow-xl"
+            onclick="event.stopPropagation()">
+
+            <div class="px-5 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-sm" id="form-modal-title">服装メモを登録</h3>
+                <button onclick="closeFormModal()" class="text-slate-400 hover:text-slate-600 px-2 py-1 text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="record-form" onsubmit="handleFormSubmit(event)" class="p-4 space-y-3.5">
+                <input type="hidden" id="edit-id">
+
+                <!-- 1. Date & Temperature & Feel -->
+                <div class="grid grid-cols-12 gap-3 items-start">
+                    <div class="col-span-12 sm:col-span-4">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">日付 <span
+                                class="text-rose-500">*</span></label>
+                        <input type="date" id="input-date" required
+                            class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <div class="col-span-4 sm:col-span-3">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">気温 <span
+                                class="text-rose-500">*</span></label>
+                        <div class="relative">
+                            <input type="number" id="input-temp" step="1" required placeholder="18"
+                                class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-3 pr-7 py-1.5 text-sm font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                            <span class="absolute right-2.5 top-2 text-xs font-bold text-slate-400">℃</span>
+                        </div>
+                    </div>
+
+                    <div class="col-span-8 sm:col-span-5">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">体感 <span
+                                class="text-rose-500">*</span></label>
+                        <div class="flex flex-wrap gap-1" id="feel-chips-container">
+                            <!-- Populated via JS -->
+                        </div>
+                        <input type="hidden" id="input-feel" required value="ちょうどいい">
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
+                <!-- 2. Top Clothing Section -->
+                <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-800">
+                            【上】トップス・羽織り <span class="text-rose-500">*</span>
+                        </label>
+                        <span class="text-[10px] text-slate-400 font-medium">タップで追加・解除</span>
+                    </div>
+
+                    <!-- Layer Count Buttons -->
+                    <div class="flex items-center space-x-1">
+                        <span class="text-[11px] font-bold text-slate-500 mr-1">枚数:</span>
+                        <button type="button" onclick="selectTopCount('上2枚')"
+                            class="top-count-btn text-xs bg-white border border-slate-300 rounded px-2 py-0.5 font-bold text-slate-700">2枚</button>
+                        <button type="button" onclick="selectTopCount('上3枚')"
+                            class="top-count-btn text-xs bg-white border border-slate-300 rounded px-2 py-0.5 font-bold text-slate-700">3枚</button>
+                        <button type="button" onclick="selectTopCount('上4枚')"
+                            class="top-count-btn text-xs bg-white border border-slate-300 rounded px-2 py-0.5 font-bold text-slate-700">4枚</button>
+                        <button type="button" onclick="selectTopCount('上5枚以上')"
+                            class="top-count-btn text-xs bg-white border border-slate-300 rounded px-2 py-0.5 font-bold text-slate-700">5枚以上</button>
+                    </div>
+
+                    <!-- Top Preset Chips -->
+                    <div class="flex flex-wrap gap-1" id="top-item-chips">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <input type="text" id="input-top-clothing" oninput="updateUIFromInput()" required
+                        placeholder="例: 上3枚 (ヒートテック、ニット、コート)"
+                        class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- 3. Bottom Clothing Section -->
+                <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-800">
+                            【下】ボトムス <span class="text-rose-500">*</span>
+                        </label>
+                        <span class="text-[10px] text-slate-400 font-medium">タップで追加・解除</span>
+                    </div>
+
+                    <!-- Bottom Preset Chips -->
+                    <div class="flex flex-wrap gap-1" id="bottom-item-chips">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <input type="text" id="input-bottom-clothing" oninput="updateUIFromInput()" required
+                        placeholder="例: 分厚めのジーンズ、タイツ重ね穿き"
+                        class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- 4. Memo -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">メモ (自由記述)</label>
+                    <input type="text" id="input-memo" placeholder="例: 風が冷たかった。室内はこれで快適。"
+                        class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 flex justify-end space-x-2 border-t border-slate-100">
+                    <button type="button" onclick="closeFormModal()"
+                        class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 font-bold text-xs">
+                        キャンセル
+                    </button>
+                    <button type="submit" class="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs">
+                        保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="modal-confirm" onclick="handleModalBackdropClick(event, 'modal-confirm', closeConfirmDialog)"
+        class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl max-w-xs w-full p-4 text-center space-y-3 border border-slate-200 shadow-lg"
+            onclick="event.stopPropagation()">
+            <h3 class="font-bold text-slate-800 text-sm" id="confirm-title">確認</h3>
+            <p class="text-xs text-slate-600" id="confirm-message">実行しますか？</p>
+            <div class="flex space-x-2 pt-1">
+                <button id="confirm-cancel-btn"
+                    class="flex-1 py-1.5 rounded-lg border border-slate-300 text-slate-600 text-xs font-bold">
+                    キャンセル
+                </button>
+                <button id="confirm-ok-btn" class="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold">
+                    実行する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 定数・状態管理 ---
+        const STORAGE_KEY = 'temp_clothing_records_v6';
+        let records = [];
+        let sortOrder = 'asc'; // 'asc': 気温低い順, 'desc': 気温高い順
+        let pendingConfirmCallback = null;
+
+        const feelOptions = ['寒すぎる', '肌寒い', 'ちょうどいい', '暖かい', '暑い', '猛暑'];
+
+        const topItemPreset = [
+            'ヒートテック', '長袖Tシャツ', '半袖Tシャツ', 'ニット',
+            'パーカー', 'カーディガン', 'ジャケット', 'コート', '厚手ダウン'
+        ];
+
+        const bottomItemPreset = [
+            '分厚めのジーンズ', '普通のパンツ', '裏起毛パンツ',
+            'スラックス', 'ハーフパンツ', 'タイツ重ね穿き'
+        ];
+
+        const defaultSamples = [
+            { id: 's1', date: '2026-01-15', temp: 3, feel: '寒すぎる', top: '上4枚 (ヒートテック、長袖Tシャツ、ニット、厚手ダウン)', bottom: '分厚めのジーンズ、タイツ重ね穿き', memo: '風が強くて極寒だった。マフラー必須。' },
+            { id: 's2', date: '2026-02-10', temp: 9, feel: '肌寒い', top: '上3枚 (ヒートテック、ニット、コート)', bottom: '裏起毛パンツ', memo: '日陰に入ると冷え込む。' },
+            { id: 's3', date: '2026-03-22', temp: 14, feel: '肌寒い', top: '上2枚 (長袖Tシャツ、ジャケット)', bottom: '普通のパンツ', memo: '朝晩は冷えるが日中は丁度よい。' },
+            { id: 's4', date: '2026-04-18', temp: 18, feel: 'ちょうどいい', top: '上2枚 (長袖Tシャツ、カーディガン)', bottom: 'スラックス', memo: '脱ぎ着しやすいカーディガンで過ごしやすかった。' },
+            { id: 's5', date: '2026-05-25', temp: 24, feel: '暖かい', top: '上2枚 (半袖Tシャツ、薄手シャツ)', bottom: '普通のパンツ', memo: '室内はエアコン対策に羽織りがあると安心。' },
+            { id: 's6', date: '2026-07-30', temp: 30, feel: '暑い', top: '半袖Tシャツ', bottom: 'ハーフパンツ', memo: 'かなり暑い。涼しい服装一択。' }
+        ];
+
+        // --- 初期化 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecords();
+            initFeelChips();
+            initPresetChips();
+            renderTable();
+
+            // モーダルの削除確認イベント
+            document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+                if (pendingConfirmCallback) pendingConfirmCallback();
+                closeConfirmDialog();
+            });
+            document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmDialog);
+
+            // Escキーでモーダルを閉じる
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeFormModal();
+                    closeConfirmDialog();
+                }
+            });
+        });
+
+        // 今日の日付を取得 (YYYY-MM-DD)
+        function getTodayString() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // 日付フォーマット表示用 (YYYY-MM-DD -> YYYY/MM/DD)
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return dateStr.replace(/-/g, '/');
+        }
+
+        // --- データ保持・取得 ---
+        function loadRecords() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                try {
+                    records = JSON.parse(data);
+                } catch (e) {
+                    records = [...defaultSamples];
+                }
+            } else {
+                records = [...defaultSamples];
+                saveRecords();
+            }
+        }
+
+        function saveRecords() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        }
+
+        // --- 高精度テキスト解析ヘルパー ---
+        function parseTopClothing(text) {
+            if (!text) return { count: '', items: [] };
+            let raw = text.trim();
+
+            const match = raw.match(/^(上\d+枚以上?)(?:\s*[\(（](.*)[\)）]|\s*(.*))?$/);
+            if (match) {
+                const count = match[1];
+                const rest = match[2] !== undefined ? match[2] : (match[3] || '');
+                const items = rest.split(/[、,]\s*/).map(s => s.trim()).filter(Boolean);
+                return { count, items };
+            }
+
+            const items = raw.split(/[、,]\s*/).map(s => s.trim()).filter(Boolean);
+            return { count: '', items };
+        }
+
+        function buildTopClothingString(count, items) {
+            const itemsStr = items.join('、');
+            if (count && itemsStr) return `${count} (${itemsStr})`;
+            if (count) return count;
+            return itemsStr;
+        }
+
+        function parseBottomClothing(text) {
+            if (!text) return [];
+            return text.trim().split(/[、,]\s*/).map(s => s.trim()).filter(Boolean);
+        }
+
+        // --- UI要素生成 ---
+        function initFeelChips() {
+            const container = document.getElementById('feel-chips-container');
+            container.innerHTML = feelOptions.map(feel => `
+                <button type="button" onclick="selectFeel('${feel}')" data-feel="${feel}" class="feel-chip px-2 py-0.5 rounded border text-xs font-bold border-slate-300 text-slate-700 bg-white">
+                    ${feel}
+                </button>
+            `).join('');
+        }
+
+        function initPresetChips() {
+            document.getElementById('top-item-chips').innerHTML = topItemPreset.map(item => `
+                <button type="button" onclick="toggleTopItem('${item}')" id="top-chip-${item}" class="top-item-chip text-xs bg-white border border-slate-300 text-slate-700 font-medium px-2 py-0.5 rounded">
+                    + ${item}
+                </button>
+            `).join('');
+
+            document.getElementById('bottom-item-chips').innerHTML = bottomItemPreset.map(item => `
+                <button type="button" onclick="toggleBottomItem('${item}')" id="bottom-chip-${item}" class="bottom-item-chip text-xs bg-white border border-slate-300 text-slate-700 font-medium px-2 py-0.5 rounded">
+                    + ${item}
+                </button>
+            `).join('');
+        }
+
+        // --- フォーム状態とUIの動的同期 ---
+        function selectFeel(feel) {
+            document.getElementById('input-feel').value = feel;
+            document.querySelectorAll('.feel-chip').forEach(btn => {
+                if (btn.dataset.feel === feel) {
+                    const badgeStyle = getFeelBadgeStyle(feel);
+                    btn.className = `feel-chip px-2 py-0.5 rounded text-xs font-bold border ${badgeStyle} ring-2 ring-indigo-600`;
+                } else {
+                    btn.className = `feel-chip px-2 py-0.5 rounded border text-xs font-bold border-slate-300 text-slate-700 bg-white`;
+                }
+            });
+        }
+
+        function selectTopCount(countLabel) {
+            const input = document.getElementById('input-top-clothing');
+            const parsed = parseTopClothing(input.value);
+
+            parsed.count = (parsed.count === countLabel) ? '' : countLabel;
+
+            input.value = buildTopClothingString(parsed.count, parsed.items);
+            updateUIFromInput();
+        }
+
+        function toggleTopItem(item) {
+            const input = document.getElementById('input-top-clothing');
+            const parsed = parseTopClothing(input.value);
+
+            if (parsed.items.includes(item)) {
+                parsed.items = parsed.items.filter(i => i !== item);
+            } else {
+                parsed.items.push(item);
+            }
+
+            input.value = buildTopClothingString(parsed.count, parsed.items);
+            updateUIFromInput();
+        }
+
+        function toggleBottomItem(item) {
+            const input = document.getElementById('input-bottom-clothing');
+            let items = parseBottomClothing(input.value);
+
+            if (items.includes(item)) {
+                items = items.filter(i => i !== item);
+            } else {
+                items.push(item);
+            }
+
+            input.value = items.join('、');
+            updateUIFromInput();
+        }
+
+        function updateUIFromInput() {
+            const topVal = document.getElementById('input-top-clothing').value;
+            const parsedTop = parseTopClothing(topVal);
+
+            document.querySelectorAll('.top-count-btn').forEach(btn => {
+                const isActive = parsedTop.count === `上${btn.textContent}`;
+                btn.className = `top-count-btn text-xs border rounded px-2 py-0.5 font-bold ${isActive
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white border-slate-300 text-slate-700'
+                    }`;
+            });
+
+            topItemPreset.forEach(item => {
+                const btn = document.getElementById(`top-chip-${item}`);
+                if (!btn) return;
+                const isSelected = parsedTop.items.includes(item);
+                btn.className = `top-item-chip text-xs font-medium px-2 py-0.5 rounded border ${isSelected
+                        ? 'bg-indigo-100 border-indigo-500 text-indigo-800 font-bold'
+                        : 'bg-white border-slate-300 text-slate-700'
+                    }`;
+                btn.textContent = isSelected ? `✓ ${item}` : `+ ${item}`;
+            });
+
+            const bottomVal = document.getElementById('input-bottom-clothing').value;
+            const parsedBottom = parseBottomClothing(bottomVal);
+
+            bottomItemPreset.forEach(item => {
+                const btn = document.getElementById(`bottom-chip-${item}`);
+                if (!btn) return;
+                const isSelected = parsedBottom.includes(item);
+                btn.className = `bottom-item-chip text-xs font-medium px-2 py-0.5 rounded border ${isSelected
+                        ? 'bg-indigo-100 border-indigo-500 text-indigo-800 font-bold'
+                        : 'bg-white border-slate-300 text-slate-700'
+                    }`;
+                btn.textContent = isSelected ? `✓ ${item}` : `+ ${item}`;
+            });
+        }
+
+        function getFeelBadgeStyle(feel) {
+            switch (feel) {
+                case '寒すぎる': return 'bg-purple-100 text-purple-800 border-purple-200';
+                case '肌寒い': return 'bg-sky-100 text-sky-800 border-sky-200';
+                case 'ちょうどいい': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                case '暖かい': return 'bg-amber-100 text-amber-800 border-amber-200';
+                case '暑い': return 'bg-rose-100 text-rose-800 border-rose-200';
+                case '猛暑': return 'bg-red-200 text-red-900 border-red-300';
+                default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            }
+        }
+
+        // --- テーブル表示・ソート・検索 ---
+        function toggleSortOrder() {
+            sortOrder = (sortOrder === 'asc') ? 'desc' : 'asc';
+            const isAsc = sortOrder === 'asc';
+
+            document.getElementById('sort-label').textContent = isAsc ? '気温が低い順' : '気温が高い順';
+            document.getElementById('sort-icon').className = isAsc
+                ? 'fa-solid fa-arrow-down-short-wide text-indigo-600'
+                : 'fa-solid fa-arrow-up-wide-short text-indigo-600';
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const searchKeyword = document.getElementById('search-input').value.toLowerCase().trim();
+
+            const filtered = records
+                .filter(r => {
+                    if (!searchKeyword) return true;
+                    const formattedDate = formatDate(r.date);
+                    const searchTarget = `${r.date || ''} ${formattedDate} ${Math.round(r.temp)}℃ ${r.feel || ''} ${r.top || ''} ${r.bottom || ''} ${r.memo || ''}`.toLowerCase();
+                    return searchTarget.includes(searchKeyword);
+                })
+                .sort((a, b) => (sortOrder === 'asc' ? a.temp - b.temp : b.temp - a.temp));
+
+            document.getElementById('record-count').textContent = `全 ${filtered.length} 件`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-8 text-center text-slate-400">
+                            <p class="text-xs">服装メモが登録されていません</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(item => {
+                const feelBadgeStyle = getFeelBadgeStyle(item.feel);
+                const intTemp = Math.round(item.temp);
+
+                return `
+                    <tr class="border-t border-slate-200">
+                        <td rowspan="2" class="py-2.5 px-2 text-center border-r border-slate-200 bg-slate-50/50 align-middle">
+                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">${formatDate(item.date)}</div>
+                            <div class="text-sm font-black text-slate-800 leading-none">${intTemp} ℃</div>
+                            <div class="mt-1.5">
+                                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${feelBadgeStyle}">
+                                    ${escapeHTML(item.feel || 'ちょうどいい')}
+                                </span>
+                            </div>
+                        </td>
+
+                        <td class="py-2 px-3 font-bold text-slate-800 border-r border-slate-200">
+                            ${escapeHTML(item.top || '-')}
+                        </td>
+
+                        <td class="py-2 px-3 font-bold text-slate-800 border-r border-slate-200">
+                            ${escapeHTML(item.bottom || '-')}
+                        </td>
+
+                        <td rowspan="2" class="py-2 px-2 text-center align-middle bg-slate-50/50">
+                            <div class="flex flex-col space-y-1 items-center justify-center">
+                                <button onclick="openFormModal('${item.id}')" class="text-slate-500 hover:text-indigo-600 px-1 py-0.5 text-xs font-bold" title="編集">
+                                    編集
+                                </button>
+                                <button onclick="confirmDelete('${item.id}')" class="text-slate-400 hover:text-rose-600 px-1 py-0.5 text-xs font-bold" title="削除">
+                                    削除
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr class="border-b border-slate-200">
+                        <td colspan="2" class="py-1.5 px-3 text-slate-600 text-[11px] bg-slate-50/20 border-r border-slate-200">
+                            <span class="font-bold text-slate-400 mr-1">メモ:</span>${escapeHTML(item.memo || 'なし')}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- モーダル・フォーム処理 ---
+        function openFormModal(editId = null) {
+            const modal = document.getElementById('modal-form');
+            const title = document.getElementById('form-modal-title');
+
+            if (editId) {
+                const target = records.find(r => r.id === editId);
+                if (!target) return;
+
+                title.textContent = '服装メモの編集';
+                document.getElementById('edit-id').value = target.id;
+                document.getElementById('input-date').value = target.date || getTodayString();
+                document.getElementById('input-temp').value = Math.round(target.temp);
+                document.getElementById('input-top-clothing').value = target.top || '';
+                document.getElementById('input-bottom-clothing').value = target.bottom || '';
+                document.getElementById('input-memo').value = target.memo || '';
+                selectFeel(target.feel || 'ちょうどいい');
+            } else {
+                title.textContent = '新規服装メモを登録';
+                document.getElementById('record-form').reset();
+                document.getElementById('edit-id').value = '';
+                document.getElementById('input-date').value = getTodayString();
+                selectFeel('ちょうどいい');
+            }
+
+            updateUIFromInput();
+            modal.classList.remove('hidden');
+        }
+
+        function closeFormModal() {
+            document.getElementById('modal-form').classList.add('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('edit-id').value;
+            const tempVal = parseInt(document.getElementById('input-temp').value, 10);
+
+            if (isNaN(tempVal)) {
+                alert("気温を整数で入力してください");
+                return;
+            }
+
+            const recordData = {
+                id: editId || 'rec_' + Date.now(),
+                date: document.getElementById('input-date').value,
+                temp: tempVal,
+                feel: document.getElementById('input-feel').value,
+                top: document.getElementById('input-top-clothing').value.trim(),
+                bottom: document.getElementById('input-bottom-clothing').value.trim(),
+                memo: document.getElementById('input-memo').value.trim()
+            };
+
+            if (editId) {
+                const idx = records.findIndex(r => r.id === editId);
+                if (idx !== -1) records[idx] = recordData;
+            } else {
+                records.push(recordData);
+            }
+
+            saveRecords();
+            closeFormModal();
+            renderTable();
+        }
+
+        function confirmDelete(id) {
+            showConfirmDialog(
+                "メモの削除",
+                "この服装メモを削除しますか？",
+                () => {
+                    records = records.filter(r => r.id !== id);
+                    saveRecords();
+                    renderTable();
+                }
+            );
+        }
+
+        function showConfirmDialog(title, message, onConfirm) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+
+            pendingConfirmCallback = onConfirm;
+            modal.classList.remove('hidden');
+        }
+
+        function closeConfirmDialog() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            pendingConfirmCallback = null;
+        }
+
+        function handleModalBackdropClick(e, modalId, closeFn) {
+            if (e.target.id === modalId) {
+                closeFn();
+            }
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+
+</html>
